@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Graduate Dashboard - JobJoint</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+  <script src="firebase.js"></script>
+</head>
+<body>
+  <header><h1>Available Requests</h1></header>
+
+  <div class="container" id="requestsList"></div>
+
+  <script>
+    db.collection("requests").onSnapshot(snapshot => {
+      const list = document.getElementById("requestsList");
+      list.innerHTML = "";
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        if (d.status === "open") {
+          list.innerHTML += `
+            <div class='job-card'>
+              <p>${d.help}</p>
+              <button onclick="acceptHelp('${doc.id}')">Accept</button>
+            </div>`;
+        }
+      });
+    });
+
+    function acceptHelp(id) {
+      db.collection("requests").doc(id).update({ status: "accepted" });
+      alert("You have accepted this request!");
+    }
+  </script>
+</body>
+</html>
