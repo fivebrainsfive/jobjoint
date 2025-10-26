@@ -3,6 +3,8 @@
 <head>
   <title>Register - JobJoint</title>
   <link rel="stylesheet" href="style.css">
+
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
@@ -12,7 +14,9 @@
   <header><h1>Register - JobJoint</h1></header>
 
   <div class="container">
-    <h2>Create your account</h2>
+    <h2>Create Account (2-Step Verification)</h2>
+    <p>Step 1: Enter your details and verify your phone number.</p>
+
     <input type="text" id="name" placeholder="Full Name" required>
     <input type="email" id="email" placeholder="Email" required>
     <input type="password" id="password" placeholder="Password" required>
@@ -20,31 +24,81 @@
       <option value="worker">Rural Worker</option>
       <option value="graduate">Graduate Helper</option>
     </select>
-    <input type="text" id="phone" placeholder="Phone Number (+91...)" required>
-    <button onclick="register()">Register</button>
+    <input type="text" id="phone" placeholder="+91..." required>
+
+    <div id="recaptcha-container"></div>
+    <button onclick="sendOTP()">Send OTP</button>
+
+    <input type="text" id="otp" placeholder="Enter OTP here">
+    <button onclick="verifyOTP()">Verify OTP & Register</button>
   </div>
 
   <script>
-    function register() {
-      const email = email.value;
-      const pass = password.value;
-      const role = role.value;
-      const phone = phone.value;
-      const nameVal = name.value;
+    let confirmationResult;
+
+    // Initialize reCAPTCHA
+    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+      'size': 'normal',
+      'callback': (response) => { console.log('reCAPTCHA solved'); }
+    });
+
+    // Send OTP to user's phone
+    function sendOTP() {
+      const phoneNumber = document.getElementById('phone').value;
+      const appVerifier = window.recaptchaVerifier;
+
+      firebase.auth().signInWithPhoneNumber(phoneNumber, appVerifier)
+        .then(result => {
+          confirmationResult = result;
+          alert("OTP sent to your phone!");
+        })
+        .catch(error => {
+          alert("Error: " + error.message);
+        });
+    }
+
+    // Verify OTP and create account
+    function verifyOTP() {
+      const otp = document.getElementById('otp').value;
+      confirmationResult.confirm(otp)
+        .then(result => {
+          alert("Phone number verified ✅");
+          createAccount(); // Proceed to email creation
+        })
+        .catch(() => alert("Invalid OTP ❌"));
+    }
+
+    // Create user with Email + Password
+    function createAccount() {
+      const email = document.getElementById('email').value;
+      const pass = document.getElementById('password').value;
+      const nameVal = document.getElementById('name').value;
+      const role = document.getElementById('role').value;
+      const phone = document.getElementById('phone').value;
 
       auth.createUserWithEmailAndPassword(email, pass)
-        .then(user => {
-          const uid = user.user.uid;
-          db.collection('users').doc(uid).set({
-            name: nameVal,
-            email: email,
-            role: role,
-            phone: phone
-          });
-          alert("Registered successfully! Verify phone in next step.");
-          window.location.href = 'login.html';
+        .then(userCred => {
+          const user = userCred.user;
+
+          // Send verification email
+          user.sendEmailVerification()
+            .then(() => {
+              // Save user to Firestore
+              db.collection("users").doc(user.uid).set({
+                name: nameVal,
+                email: email,
+                phone: phone,
+                role: role,
+                verifiedPhone: true,
+                verifiedEmail: false
+              }).then(() => {
+                alert("Verification email sent to " + email + ". Please check your inbox to complete registration.");
+                window.location.href = "login.html";
+              });
+            })
+            .catch(err => alert("Error sending verification email: " + err.message));
         })
-        .catch(e => alert(e.message));
+        .catch(err => alert("Error creating account: " + err.message));
     }
   </script>
 </body>
