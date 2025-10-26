@@ -1,22 +1,81 @@
-<script>
-  function login() {
-    const emailVal = email.value;
-    const passVal = password.value;
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login - JobJoint</title>
+  <link rel="stylesheet" href="style.css">
 
-    auth.signInWithEmailAndPassword(emailVal, passVal)
-      .then(() => {
-        const user = auth.currentUser;
-        if (user.emailVerified) {
-          db.collection("users").doc(user.uid).get().then(doc => {
-            const data = doc.data();
-            if (data.role === "worker") window.location.href = "worker.html";
-            else window.location.href = "graduate.html";
-          });
-        } else {
-          alert("Please verify your email before logging in.");
-          auth.signOut();
-        }
-      })
-      .catch(e => alert(e.message));
-  }
-</script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+  <script src="firebase.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Login - JobJoint</h1>
+  </header>
+
+  <div class="container">
+    <h2>Login to your account</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <p id="errorMsg" style="color:red;"></p>
+    <p>Don't have an account? <a href="register.html">Register here</a></p>
+  </div>
+
+  <script>
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    function login() {
+      const emailInput = document.getElementById("email").value;
+      const passwordInput = document.getElementById("password").value;
+      const errorMsg = document.getElementById("errorMsg");
+      errorMsg.innerText = ""; // clear previous errors
+
+      if (!emailInput || !passwordInput) {
+        errorMsg.innerText = "Please enter email and password.";
+        return;
+      }
+
+      auth.signInWithEmailAndPassword(emailInput, passwordInput)
+        .then(() => {
+          const user = auth.currentUser;
+
+          if (!user.emailVerified) {
+            errorMsg.innerText = "Please verify your email before logging in.";
+            auth.signOut();
+            return;
+          }
+
+          // Get user role from Firestore
+          db.collection("users").doc(user.uid).get()
+            .then(doc => {
+              if (!doc.exists) {
+                errorMsg.innerText = "User data not found in database.";
+                auth.signOut();
+                return;
+              }
+
+              const data = doc.data();
+              if (data.role === "worker") {
+                window.location.href = "worker.html";
+              } else if (data.role === "graduate") {
+                window.location.href = "graduate.html";
+              } else {
+                errorMsg.innerText = "User role not assigned properly.";
+                auth.signOut();
+              }
+            })
+            .catch(err => {
+              errorMsg.innerText = "Error fetching user data: " + err.message;
+            });
+        })
+        .catch(err => {
+          errorMsg.innerText = "Login failed: " + err.message;
+        });
+    }
+  </script>
+</body>
+</html>
