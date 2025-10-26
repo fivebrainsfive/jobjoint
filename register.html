@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Register - JobJoint</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+  <script src="firebase.js"></script>
+</head>
+<body>
+  <header><h1>Register - JobJoint</h1></header>
+
+  <div class="container">
+    <h2>Create your account</h2>
+    <input type="text" id="name" placeholder="Full Name" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <select id="role">
+      <option value="worker">Rural Worker</option>
+      <option value="graduate">Graduate Helper</option>
+    </select>
+    <input type="text" id="phone" placeholder="Phone Number (+91...)" required>
+    <button onclick="register()">Register</button>
+  </div>
+
+  <script>
+    function register() {
+      const email = email.value;
+      const pass = password.value;
+      const role = role.value;
+      const phone = phone.value;
+      const nameVal = name.value;
+
+      auth.createUserWithEmailAndPassword(email, pass)
+        .then(user => {
+          const uid = user.user.uid;
+          db.collection('users').doc(uid).set({
+            name: nameVal,
+            email: email,
+            role: role,
+            phone: phone
+          });
+          alert("Registered successfully! Verify phone in next step.");
+          window.location.href = 'login.html';
+        })
+        .catch(e => alert(e.message));
+    }
+  </script>
+</body>
+</html>
