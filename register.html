@@ -26,7 +26,7 @@
       <option value="worker">Rural Worker</option>
       <option value="graduate">Graduate Helper</option>
     </select>
-    <input type="text" id="phone" placeholder="+91..." required>
+    <input type="text" id="phone" placeholder="Enter phone number" required>
 
     <div id="recaptcha-container"></div>
     <button onclick="sendOTP()">Send OTP</button>
@@ -37,36 +37,64 @@
 
   <script>
     let confirmationResult;
+
+    // Initialize reCAPTCHA
     window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
       'size': 'normal',
       'callback': () => { console.log('reCAPTCHA solved'); }
     });
 
+    // Send OTP function
     function sendOTP() {
-      const phone = document.getElementById('phone').value;
+      let phone = document.getElementById('phone').value.trim();
+
+      // Auto-add +91 if missing
+      if (!phone.startsWith("+")) {
+        phone = "+91" + phone;
+      }
+
+      // Validate 10 digit number after country code
+      const phoneDigits = phone.replace(/\D/g,'').slice(2); // remove +91
+      if (phoneDigits.length !== 10) {
+        alert("Please enter a valid 10-digit phone number.");
+        return;
+      }
+
       firebase.auth().signInWithPhoneNumber(phone, window.recaptchaVerifier)
-        .then(result => { confirmationResult = result; alert("OTP sent!"); })
+        .then(result => {
+          confirmationResult = result;
+          alert("OTP sent! Check your phone.");
+        })
         .catch(err => alert("Error sending OTP: " + err.message));
     }
 
+    // Verify OTP and create account
     function verifyOTP() {
       const otp = document.getElementById('otp').value;
+      if (!otp) { alert("Enter OTP"); return; }
+
       confirmationResult.confirm(otp)
-        .then(() => { alert("Phone verified ✅"); createAccount(); })
+        .then(() => { 
+          alert("Phone verified ✅"); 
+          createAccount(); 
+        })
         .catch(() => alert("Invalid OTP ❌"));
     }
 
+    // Create user with Email + Password
     function createAccount() {
       const nameVal = document.getElementById('name').value;
       const email = document.getElementById('email').value;
       const pass = document.getElementById('password').value;
       const role = document.getElementById('role').value;
-      const phone = document.getElementById('phone').value;
+      let phone = document.getElementById('phone').value.trim();
+      if (!phone.startsWith("+")) phone = "+91" + phone;
 
       auth.createUserWithEmailAndPassword(email, pass)
         .then(userCred => {
           const user = userCred.user;
 
+          // Send email verification
           user.sendEmailVerification()
             .then(() => {
               db.collection("users").doc(user.uid).set({
