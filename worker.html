@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Worker Dashboard - JobJoint</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+  <script src="firebase.js"></script>
+</head>
+<body>
+  <header><h1>Post a Help Request</h1></header>
+
+  <div class="container">
+    <textarea id="helpText" placeholder="Describe your help needed (e.g., marketing support for my small shop)"></textarea>
+    <button onclick="postHelp()">Post Request</button>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    function postHelp() {
+      const help = helpText.value;
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          db.collection("requests").add({
+            uid: user.uid,
+            help: help,
+            time: new Date(),
+            status: "open"
+          }).then(() => {
+            document.getElementById("status").innerText = "Your request has been posted!";
+          });
+        }
+      });
+    }
+  </script>
+</body>
+</html>
