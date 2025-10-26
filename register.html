@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Register - JobJoint</title>
   <link rel="stylesheet" href="style.css">
 
@@ -15,7 +17,7 @@
 
   <div class="container">
     <h2>Create Account (2-Step Verification)</h2>
-    <p>Step 1: Enter your details and verify your phone number.</p>
+    <p>Step 1: Enter details and verify your phone number</p>
 
     <input type="text" id="name" placeholder="Full Name" required>
     <input type="email" id="email" placeholder="Email" required>
@@ -35,44 +37,29 @@
 
   <script>
     let confirmationResult;
-
-    // Initialize reCAPTCHA
     window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
       'size': 'normal',
-      'callback': (response) => { console.log('reCAPTCHA solved'); }
+      'callback': () => { console.log('reCAPTCHA solved'); }
     });
 
-    // Send OTP to user's phone
     function sendOTP() {
-      const phoneNumber = document.getElementById('phone').value;
-      const appVerifier = window.recaptchaVerifier;
-
-      firebase.auth().signInWithPhoneNumber(phoneNumber, appVerifier)
-        .then(result => {
-          confirmationResult = result;
-          alert("OTP sent to your phone!");
-        })
-        .catch(error => {
-          alert("Error: " + error.message);
-        });
+      const phone = document.getElementById('phone').value;
+      firebase.auth().signInWithPhoneNumber(phone, window.recaptchaVerifier)
+        .then(result => { confirmationResult = result; alert("OTP sent!"); })
+        .catch(err => alert("Error sending OTP: " + err.message));
     }
 
-    // Verify OTP and create account
     function verifyOTP() {
       const otp = document.getElementById('otp').value;
       confirmationResult.confirm(otp)
-        .then(result => {
-          alert("Phone number verified ✅");
-          createAccount(); // Proceed to email creation
-        })
+        .then(() => { alert("Phone verified ✅"); createAccount(); })
         .catch(() => alert("Invalid OTP ❌"));
     }
 
-    // Create user with Email + Password
     function createAccount() {
+      const nameVal = document.getElementById('name').value;
       const email = document.getElementById('email').value;
       const pass = document.getElementById('password').value;
-      const nameVal = document.getElementById('name').value;
       const role = document.getElementById('role').value;
       const phone = document.getElementById('phone').value;
 
@@ -80,10 +67,8 @@
         .then(userCred => {
           const user = userCred.user;
 
-          // Send verification email
           user.sendEmailVerification()
             .then(() => {
-              // Save user to Firestore
               db.collection("users").doc(user.uid).set({
                 name: nameVal,
                 email: email,
@@ -92,7 +77,7 @@
                 verifiedPhone: true,
                 verifiedEmail: false
               }).then(() => {
-                alert("Verification email sent to " + email + ". Please check your inbox to complete registration.");
+                alert("Email verification sent! Check inbox. Registration complete.");
                 window.location.href = "login.html";
               });
             })
