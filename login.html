@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login - JobJoint</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
+  <script src="firebase.js"></script>
+</head>
+<body>
+  <header><h1>Login - JobJoint</h1></header>
+
+  <div class="container">
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+  </div>
+
+  <script>
+    function login() {
+      const emailVal = email.value;
+      const passVal = password.value;
+      auth.signInWithEmailAndPassword(emailVal, passVal)
+        .then(() => {
+          auth.onAuthStateChanged(user => {
+            if (user) {
+              db.collection("users").doc(user.uid).get().then(doc => {
+                const data = doc.data();
+                if (data.role === "worker") window.location.href = "worker.html";
+                else window.location.href = "graduate.html";
+              });
+            }
+          });
+        })
+        .catch(e => alert(e.message));
+    }
+  </script>
+</body>
+</html>
