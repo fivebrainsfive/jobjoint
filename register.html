@@ -1,117 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Register - JobJoint</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
-  <script src="firebase.js"></script>
+
+  <script>
+    // ✅ Initialize Firebase (same as login page)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCRJWxKrUMpSd8yUPnPzPcBGu3tlkklCok",
+      authDomain: "jobjoint-92df5.firebaseapp.com",
+      projectId: "jobjoint-92df5",
+      storageBucket: "jobjoint-92df5.firebasestorage.app",
+      messagingSenderId: "457361834077",
+      appId: "1:457361834077:web:3101303905ad8c39114db4",
+      measurementId: "G-5SMBJLS37B"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+  </script>
 </head>
 <body>
-  <header><h1>Register - JobJoint</h1></header>
+  <header>
+    <h1>Register - JobJoint</h1>
+  </header>
 
   <div class="container">
-    <h2>Create Account (2-Step Verification)</h2>
-    <p>Step 1: Enter details and verify your phone number</p>
+    <h2>Create your account</h2>
 
-    <input type="text" id="name" placeholder="Full Name" required>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="password" id="password" placeholder="Password" required>
+    <input type="text" id="name" placeholder="Full Name" />
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password (min 6 characters)" />
+    
+    <label for="role">Select your role:</label>
     <select id="role">
-      <option value="worker">Rural Worker</option>
-      <option value="graduate">Graduate Helper</option>
+      <option value="">-- Select Role --</option>
+      <option value="worker">Worker</option>
+      <option value="graduate">Graduate</option>
     </select>
-    <input type="text" id="phone" placeholder="Enter phone number" required>
 
-    <div id="recaptcha-container"></div>
-    <button onclick="sendOTP()">Send OTP</button>
+    <button id="registerBtn" onclick="register()">Register</button>
 
-    <input type="text" id="otp" placeholder="Enter OTP here">
-    <button onclick="verifyOTP()">Verify OTP & Register</button>
+    <p id="errorMsg" style="color: red;"></p>
+    <p id="successMsg" style="color: green;"></p>
+
+    <p>Already have an account? <a href="login.html">Login here</a></p>
   </div>
 
   <script>
-    let confirmationResult;
+    async function register() {
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const role = document.getElementById("role").value;
+      const errorMsg = document.getElementById("errorMsg");
+      const successMsg = document.getElementById("successMsg");
+      const registerBtn = document.getElementById("registerBtn");
 
-    // Initialize reCAPTCHA
-    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-      'size': 'normal',
-      'callback': () => { console.log('reCAPTCHA solved'); }
-    });
+      errorMsg.innerText = "";
+      successMsg.innerText = "";
+      registerBtn.disabled = true;
+      registerBtn.innerText = "Registering...";
 
-    // Send OTP function
-    function sendOTP() {
-      let phone = document.getElementById('phone').value.trim();
-
-      // Auto-add +91 if missing
-      if (!phone.startsWith("+")) {
-        phone = "+91" + phone;
-      }
-
-      // Validate 10 digit number after country code
-      const phoneDigits = phone.replace(/\D/g,'').slice(2); // remove +91
-      if (phoneDigits.length !== 10) {
-        alert("Please enter a valid 10-digit phone number.");
+      // ✅ Basic validation
+      if (!name || !email || !password || !role) {
+        errorMsg.innerText = "Please fill in all fields.";
+        registerBtn.disabled = false;
+        registerBtn.innerText = "Register";
         return;
       }
 
-      firebase.auth().signInWithPhoneNumber(phone, window.recaptchaVerifier)
-        .then(result => {
-          confirmationResult = result;
-          alert("OTP sent! Check your phone.");
-        })
-        .catch(err => alert("Error sending OTP: " + err.message));
-    }
+      if (password.length < 6) {
+        errorMsg.innerText = "Password must be at least 6 characters long.";
+        registerBtn.disabled = false;
+        registerBtn.innerText = "Register";
+        return;
+      }
 
-    // Verify OTP and create account
-    function verifyOTP() {
-      const otp = document.getElementById('otp').value;
-      if (!otp) { alert("Enter OTP"); return; }
+      try {
+        // ✅ Create user
+        const credential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = credential.user;
 
-      confirmationResult.confirm(otp)
-        .then(() => { 
-          alert("Phone verified ✅"); 
-          createAccount(); 
-        })
-        .catch(() => alert("Invalid OTP ❌"));
-    }
+        // ✅ Save user info to Firestore
+        await db.collection("users").doc(user.uid).set({
+          name,
+          email,
+          role,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
 
-    // Create user with Email + Password
-    function createAccount() {
-      const nameVal = document.getElementById('name').value;
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
-      const role = document.getElementById('role').value;
-      let phone = document.getElementById('phone').value.trim();
-      if (!phone.startsWith("+")) phone = "+91" + phone;
+        // ✅ Send email verification
+        await user.sendEmailVerification();
 
-      auth.createUserWithEmailAndPassword(email, pass)
-        .then(userCred => {
-          const user = userCred.user;
-
-          // Send email verification
-          user.sendEmailVerification()
-            .then(() => {
-              db.collection("users").doc(user.uid).set({
-                name: nameVal,
-                email: email,
-                phone: phone,
-                role: role,
-                verifiedPhone: true,
-                verifiedEmail: false
-              }).then(() => {
-                alert("Email verification sent! Check inbox. Registration complete.");
-                window.location.href = "login.html";
-              });
-            })
-            .catch(err => alert("Error sending verification email: " + err.message));
-        })
-        .catch(err => alert("Error creating account: " + err.message));
+        successMsg.innerText = "Registration successful! Please check your email for verification before logging in.";
+        registerBtn.innerText = "Registered!";
+        registerBtn.disabled = true;
+      } catch (err) {
+        errorMsg.innerText = "Registration failed: " + err.message;
+        registerBtn.disabled = false;
+        registerBtn.innerText = "Register";
+      }
     }
   </script>
 </body>
